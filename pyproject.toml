@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wrchart"
+version = "0.1.0"
+description = "Interactive financial charting library with Polars support and TradingView-style aesthetics"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Wayy Research", email = "contact@wayy.research"}
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Framework :: Jupyter",
+]
+keywords = [
+    "charting",
+    "trading",
+    "finance",
+    "visualization",
+    "candlestick",
+    "renko",
+    "kagi",
+    "polars",
+    "jupyter",
+    "interactive",
+]
+dependencies = [
+    "polars>=0.20.0",
+    "numpy>=1.21.0",
+]
+
+[project.optional-dependencies]
+jupyter = [
+    "ipywidgets>=8.0.0",
+    "jupyterlab>=4.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+all = [
+    "ipywidgets>=8.0.0",
+    "jupyterlab>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wayy-research/wrchart"
+Documentation = "https://wrchart.readthedocs.io/"
+Repository = "https://github.com/wayy-research/wrchart"
+"Bug Tracker" = "https://github.com/wayy-research/wrchart/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+wrchart = ["widget/js/*.js"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
