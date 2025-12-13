@@ -2,13 +2,17 @@
 
 Interactive financial charting for Python with Polars support and TradingView-style aesthetics.
 
+**[View Live Demo](./examples/demo.html)** - See all chart types, indicators, GPU-accelerated million-point rendering, and high-frequency data visualization in action.
+
 ## Features
 
 - **Polars-native** - Works directly with Polars DataFrames
 - **Interactive** - TradingView-style pan, zoom, and crosshair
 - **Jupyter-ready** - Renders inline in notebooks
 - **Non-standard charts** - Renko, Kagi, Point & Figure, Heikin-Ashi, Line Break, Range Bars
-- **High-frequency data** - LTTB decimation for millions of tick data points
+- **GPU-accelerated** - WebGL rendering for millions of points at 60fps
+- **Dynamic LOD** - Level of Detail automatically adjusts based on zoom
+- **High-frequency data** - LTTB decimation for tick data visualization
 - **Styled by default** - Clean Wayy Research aesthetic
 
 ## Install
@@ -93,6 +97,35 @@ display_data = wrc.lttb_downsample(tick_data, target_points=2000)
 chart.add_line(display_data, value_col="price")
 ```
 
+### GPU-Accelerated Million Point Rendering
+
+For tick-by-tick data with millions of points, use `WebGLChart` for GPU-accelerated rendering:
+
+```python
+import wrchart as wrc
+import polars as pl
+
+# Create 1 million tick data points
+df = pl.DataFrame({
+    "time": range(1_000_000),
+    "price": [...],  # Your tick prices
+})
+
+# WebGL chart with automatic LOD
+chart = wrc.WebGLChart(width=800, height=400, title="Tick Data")
+chart.add_line(df, time_col="time", value_col="price")
+chart.show()
+
+# Or save to HTML file
+chart.to_html("tick_chart.html")
+```
+
+Features:
+- **60fps rendering** of millions of points via WebGL
+- **Dynamic LOD**: Automatically switches between 7 detail levels (2K to 1M points)
+- **Virtual viewport**: Only renders visible data for maximum performance
+- **Smooth interaction**: Pan with drag, zoom with scroll wheel
+
 ## Themes
 
 ```python
@@ -126,6 +159,22 @@ chart.add_histogram(df, time_col="time", value_col="value", ...)
 chart.add_volume(df, time_col="time", volume_col="volume", ...)
 chart.add_marker(time, position="aboveBar", shape="circle", ...)
 chart.show()
+```
+
+### WebGLChart (GPU-Accelerated)
+
+```python
+wrc.WebGLChart(
+    width=800,          # Chart width in pixels
+    height=400,         # Chart height in pixels
+    theme=WayyTheme,    # Color theme
+    title=None,         # Optional chart title
+)
+
+# Methods
+chart.add_line(df, time_col="time", value_col="value")  # Add line data
+chart.show()                                             # Display in notebook/browser
+chart.to_html("chart.html")                             # Save to HTML file
 ```
 
 ### Transforms

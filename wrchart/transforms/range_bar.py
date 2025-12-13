@@ -57,103 +57,69 @@ def to_range_bars(
         )
 
     bars: List[Dict[str, Any]] = []
+    max_bars = 500  # Safety limit
 
-    # Initialize first bar
-    current_open = (highs[0] + lows[0]) / 2
-    current_high = current_open
-    current_low = current_open
+    # Initialize with first candle's midpoint
+    open_price = (highs[0] + lows[0]) / 2
+    range_high = open_price
+    range_low = open_price
     bar_start_time = times[0]
 
     for i in range(len(highs)):
+        if len(bars) >= max_bars:
+            break
+
         high = highs[i]
         low = lows[i]
         time = times[i]
 
-        # Update current bar's high/low
-        current_high = max(current_high, high)
-        current_low = min(current_low, low)
+        # Update range tracking
+        if high > range_high:
+            range_high = high
+        if low < range_low:
+            range_low = low
 
-        # Check if we've exceeded the range
-        while current_high - current_low >= range_size:
-            # Determine bar direction based on which extreme was hit first
-            # For simplicity, we'll create bars in the direction of the move
+        # Keep creating bars while conditions are met
+        bars_created = True
+        while bars_created and len(bars) < max_bars:
+            bars_created = False
 
-            if current_high - current_open >= range_size:
-                # Bullish bar
-                bar_low = current_high - range_size
-                bars.append(
-                    {
-                        "time": bar_start_time,
-                        "open": current_open,
-                        "high": current_high,
-                        "low": bar_low,
-                        "close": current_high,
-                    }
-                )
-                # Start new bar
-                current_open = current_high
-                current_low = current_high
+            # Check for up bar: high moved enough from open
+            if range_high - open_price >= range_size:
+                bar_close = open_price + range_size
+                bars.append({
+                    "time": bar_start_time,
+                    "open": open_price,
+                    "high": bar_close,
+                    "low": open_price,
+                    "close": bar_close,
+                })
+                open_price = bar_close
+                range_high = max(range_high, bar_close)
+                range_low = bar_close
                 bar_start_time = time
+                bars_created = True
 
-            elif current_open - current_low >= range_size:
-                # Bearish bar
-                bar_high = current_low + range_size
-                bars.append(
-                    {
-                        "time": bar_start_time,
-                        "open": current_open,
-                        "high": bar_high,
-                        "low": current_low,
-                        "close": current_low,
-                    }
-                )
-                # Start new bar
-                current_open = current_low
-                current_high = current_low
+            # Check for down bar: low moved enough from open
+            elif open_price - range_low >= range_size:
+                bar_close = open_price - range_size
+                bars.append({
+                    "time": bar_start_time,
+                    "open": open_price,
+                    "high": open_price,
+                    "low": bar_close,
+                    "close": bar_close,
+                })
+                open_price = bar_close
+                range_low = min(range_low, bar_close)
+                range_high = bar_close
                 bar_start_time = time
-            else:
-                # Range exceeded but no clear direction, create bar to high
-                bar_low = current_high - range_size
-                bars.append(
-                    {
-                        "time": bar_start_time,
-                        "open": current_open,
-                        "high": current_high,
-                        "low": bar_low,
-                        "close": current_high,
-                    }
-                )
-                current_open = current_high
-                current_low = current_high
-                bar_start_time = time
-
-            # Recalculate current range with remaining data
-            current_high = max(current_open, high)
-            current_low = min(current_open, low)
-
-    # Add final incomplete bar if there's any range
-    if current_high > current_low:
-        close = (current_high + current_low) / 2
-        bars.append(
-            {
-                "time": bar_start_time,
-                "open": current_open,
-                "high": current_high,
-                "low": current_low,
-                "close": close,
-            }
-        )
+                bars_created = True
 
     if not bars:
-        # Not enough movement
+        # Not enough movement, return empty with proper schema
         return pl.DataFrame(
-            {
-                "time": [times[0]],
-                "open": [current_open],
-                "high": [current_high],
-                "low": [current_low],
-                "close": [(current_high + current_low) / 2],
-            }
-        )
+            {"time": [], "open": [], "high": [], "low": [], "close": []}
+        ).cast({"time": df[time_col].dtype})
 
     return pl.DataFrame(bars)

@@ -36,8 +36,8 @@ def to_renko(
         brick_size: Size of each brick in price units
         time_col: Name of time column
         close_col: Name of close price column
-        high_col: Name of high price column (for wick calculation)
-        low_col: Name of low price column (for wick calculation)
+        high_col: Name of high price column (uses intraday highs)
+        low_col: Name of low price column (uses intraday lows)
         use_atr: If True, calculate brick_size from ATR
         atr_period: Period for ATR calculation if use_atr=True
 
@@ -55,65 +55,91 @@ def to_renko(
     if use_atr and high_col and low_col:
         brick_size = _calculate_atr_brick_size(df, high_col, low_col, close_col, atr_period)
 
-    closes = df[close_col].to_list()
     times = df[time_col].to_list()
 
-    if len(closes) == 0:
+    # Use high/low if available, otherwise fall back to close
+    use_hl = high_col in df.columns and low_col in df.columns
+    if use_hl:
+        highs = df[high_col].to_list()
+        lows = df[low_col].to_list()
+    else:
+        closes = df[close_col].to_list()
+        highs = closes
+        lows = closes
+
+    if len(times) == 0:
         return pl.DataFrame(
             {"time": [], "open": [], "high": [], "low": [], "close": []}
         )
 
     # Initialize with first price
-    current_price = closes[0]
+    first_price = (highs[0] + lows[0]) / 2 if use_hl else highs[0]
     # Round to nearest brick
-    base_price = round(current_price / brick_size) * brick_size
+    base_price = round(first_price / brick_size) * brick_size
 
     bricks = []
     brick_times = []
     last_direction = 0  # 1 for up, -1 for down, 0 for initial
+    max_bricks = 500  # Safety limit
 
-    for i, close in enumerate(closes):
-        # Calculate how many bricks to add
-        price_diff = close - base_price
+    for i in range(len(times)):
+        if len(bricks) >= max_bricks:
+            break
 
-        if abs(price_diff) >= brick_size:
-            num_bricks = int(abs(price_diff) / brick_size)
-            direction = 1 if price_diff > 0 else -1
+        # Process both high and low to catch intraday moves
+        # Order depends on last direction to handle reversals correctly
+        if last_direction >= 0:
+            prices_to_check = [highs[i], lows[i]]
+        else:
+            prices_to_check = [lows[i], highs[i]]
 
-            # Check for reversal (requires 2 bricks in opposite direction)
-            if last_direction != 0 and direction != last_direction:
-                if num_bricks < 2:
-                    continue  # Not enough movement for reversal
-                num_bricks -= 1  # Reversal costs one brick
+        for price in prices_to_check:
+            if len(bricks) >= max_bricks:
+                break
 
-            for _ in range(num_bricks):
+            # Check for upward bricks
+            while price - base_price >= brick_size and len(bricks) < max_bricks:
+                # Reversal check: need 2x brick size for reversal from down
+                if last_direction == -1 and price - base_price < brick_size * 2:
+                    break
+
                 brick_open = base_price
-                brick_close = base_price + (direction * brick_size)
+                brick_close = base_price + brick_size
 
-                bricks.append(
-                    {
-                        "open": brick_open,
-                        "close": brick_close,
-                        "high": max(brick_open, brick_close),
-                        "low": min(brick_open, brick_close),
-                    }
-                )
+                bricks.append({
+                    "open": brick_open,
+                    "close": brick_close,
+                    "high": brick_close,
+                    "low": brick_open,
+                })
                 brick_times.append(times[i])
-
                 base_price = brick_close
-                last_direction = direction
+                last_direction = 1
+
+            # Check for downward bricks
+            while base_price - price >= brick_size and len(bricks) < max_bricks:
+                # Reversal check: need 2x brick size for reversal from up
+                if last_direction == 1 and base_price - price < brick_size * 2:
+                    break
+
+                brick_open = base_price
+                brick_close = base_price - brick_size
+
+                bricks.append({
+                    "open": brick_open,
+                    "close": brick_close,
+                    "high": brick_open,
+                    "low": brick_close,
+                })
+                brick_times.append(times[i])
+                base_price = brick_close
+                last_direction = -1
 
     if not bricks:
-        # No bricks formed, return single brick from first to last price
+        # No bricks formed, return empty DataFrame with proper schema
         return pl.DataFrame(
-            {
-                "time": [times[0]],
-                "open": [closes[0]],
-                "high": [max(closes)],
-                "low": [min(closes)],
-                "close": [closes[-1]],
-            }
-        )
+            {"time": [], "open": [], "high": [], "low": [], "close": []}
+        ).cast({"time": df[time_col].dtype})
 
     return pl.DataFrame(
         {
