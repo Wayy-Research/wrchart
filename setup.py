@@ -13,7 +13,7 @@ long_description = readme_path.read_text() if readme_path.exists() else ""
 
 setup(
     name="wrchart",
-    version="0.1.0",
+    version="0.1.3",
     description="Interactive financial charting library with Polars support and TradingView-style aesthetics",
     long_description=long_description,
     long_description_content_type="text/markdown",

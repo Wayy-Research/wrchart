@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wrchart"
-version = "0.1.1"
+version = "0.1.3"
 description = "Interactive financial charting library with Polars support and TradingView-style aesthetics"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Wayy Research", email = "contact@wayy.research"}
 ]

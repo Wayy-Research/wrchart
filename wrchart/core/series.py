@@ -56,9 +56,21 @@ class BaseSeries(ABC):
     def _time_to_js(self, time_col: pl.Series) -> List[Any]:
         """Convert time column to JS-compatible format."""
         # Handle different time types
-        if time_col.dtype == pl.Datetime:
-            # Convert to Unix timestamp (seconds)
-            return (time_col.cast(pl.Int64) // 1_000_000_000).to_list()
+        if time_col.dtype == pl.Datetime or str(time_col.dtype).startswith("Datetime"):
+            # Get time unit from dtype
+            dtype_str = str(time_col.dtype)
+            if "ns" in dtype_str:
+                # Nanoseconds to seconds
+                return (time_col.cast(pl.Int64) // 1_000_000_000).to_list()
+            elif "us" in dtype_str or "μs" in dtype_str:
+                # Microseconds to seconds
+                return (time_col.cast(pl.Int64) // 1_000_000).to_list()
+            elif "ms" in dtype_str:
+                # Milliseconds to seconds
+                return (time_col.cast(pl.Int64) // 1_000).to_list()
+            else:
+                # Default: assume microseconds (most common)
+                return (time_col.cast(pl.Int64) // 1_000_000).to_list()
         elif time_col.dtype == pl.Date:
             # Convert date to string format YYYY-MM-DD
             return time_col.cast(pl.Utf8).to_list()
