@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WRChart Debug Test</title>
+    <style>
+        body {
+            background: #131722;
+            color: white;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #chart-container {
+            width: 900px;
+            height: 500px;
+            border: 1px solid #444;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #222;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error { color: #f44336; }
+        .success { color: #4caf50; }
+        .info { color: #2196f3; }
+    </style>
+</head>
+<body>
+    <h2>WRChart Debug Test</h2>
+    <div id="chart-container"></div>
+    <div id="log"></div>
+
+    <script>
+        const logEl = document.getElementById('log');
+        function log(msg, type = 'info') {
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toISOString().substr(11, 12)}] ${msg}`;
+            logEl.appendChild(line);
+            console.log(msg);
+        }
+
+        window.onerror = function(msg, url, line, col, error) {
+            log(`JS ERROR: ${msg} at ${url}:${line}:${col}`, 'error');
+            return false;
+        };
+    </script>
+
+    <script>
+        log('Starting test...', 'info');
+        log('Checking if LightweightCharts is defined before loading...', 'info');
+        log(`LightweightCharts defined: ${typeof LightweightCharts !== 'undefined'}`, 'info');
+    </script>
+
+    <!-- Test with v4.2.1 (latest v4) -->
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+
+    <script>
+        log('Library loaded, checking availability...', 'info');
+        log(`LightweightCharts defined: ${typeof LightweightCharts !== 'undefined'}`, typeof LightweightCharts !== 'undefined' ? 'success' : 'error');
+
+        if (typeof LightweightCharts === 'undefined') {
+            log('FATAL: LightweightCharts not loaded!', 'error');
+        } else {
+            log(`LightweightCharts version: ${LightweightCharts.version || 'unknown'}`, 'info');
+            log(`Available methods: ${Object.keys(LightweightCharts).join(', ')}`, 'info');
+
+            try {
+                const container = document.getElementById('chart-container');
+                log(`Container found: ${!!container}`, container ? 'success' : 'error');
+                log(`Container size: ${container.offsetWidth}x${container.offsetHeight}`, 'info');
+
+                const chart = LightweightCharts.createChart(container, {
+                    width: 900,
+                    height: 500,
+                    layout: {
+                        background: { type: 'solid', color: '#1a1a1a' },
+                        textColor: '#ffffff'
+                    }
+                });
+                log('Chart created successfully', 'success');
+
+                // Check if addCandlestickSeries exists
+                log(`addCandlestickSeries exists: ${typeof chart.addCandlestickSeries === 'function'}`,
+                    typeof chart.addCandlestickSeries === 'function' ? 'success' : 'error');
+
+                // Test data
+                const testData = [
+                    { time: 0, open: 100, high: 105, low: 98, close: 103 },
+                    { time: 1, open: 103, high: 107, low: 101, close: 105 },
+                    { time: 2, open: 105, high: 110, low: 104, close: 108 },
+                    { time: 3, open: 108, high: 112, low: 106, close: 110 },
+                    { time: 4, open: 110, high: 115, low: 109, close: 113 },
+                    { time: 5, open: 113, high: 118, low: 111, close: 116 },
+                    { time: 6, open: 116, high: 120, low: 114, close: 118 },
+                    { time: 7, open: 118, high: 122, low: 116, close: 120 },
+                    { time: 8, open: 120, high: 125, low: 118, close: 123 },
+                    { time: 9, open: 123, high: 128, low: 121, close: 126 },
+                ];
+
+                const candlestickSeries = chart.addCandlestickSeries({
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderUpColor: '#26a69a',
+                    borderDownColor: '#ef5350',
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350'
+                });
+                log('Candlestick series created', 'success');
+
+                candlestickSeries.setData(testData);
+                log('Data set on series', 'success');
+
+                chart.timeScale().fitContent();
+                log('Chart rendering complete!', 'success');
+
+            } catch (e) {
+                log(`ERROR: ${e.message}`, 'error');
+                log(`Stack: ${e.stack}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
