@@ -4,10 +4,50 @@ wrchart - Interactive financial charting for Python
 A Polars-native charting library with TradingView-style aesthetics,
 supporting standard and non-standard chart types (Renko, Kagi, P&F, etc.)
 and GPU-accelerated high-frequency data visualization.
+
+Quick Start:
+    >>> import wrchart as wrc
+    >>> import polars as pl
+    >>>
+    >>> # Just pass your data - it figures out the rest
+    >>> df = pl.read_csv("prices.csv")
+    >>> wrc.Chart(df).show()
+    >>>
+    >>> # Or use quick-plot functions
+    >>> wrc.candlestick(df).show()
+    >>> wrc.line(df).show()
 """
 
-from wrchart.core.chart import Chart
-from wrchart.core.webgl_chart import WebGLChart
+import warnings
+
+# Unified Chart API
+from wrchart.core.chart import (
+    Chart,
+    # Quick-plot functions
+    candlestick,
+    line,
+    area,
+    forecast,
+    dashboard,
+)
+
+# Column auto-detection
+from wrchart.core.schema import DataSchema
+
+# Themes - both class names and string shortcuts
+from wrchart.core.themes import (
+    Theme,
+    WayyTheme,
+    DarkTheme,
+    LightTheme,
+    WAYY,
+    DARK,
+    LIGHT,
+    get_theme,
+    resolve_theme,
+)
+
+# Series types (still available for advanced usage)
 from wrchart.core.series import (
     CandlestickSeries,
     LineSeries,
@@ -15,8 +55,8 @@ from wrchart.core.series import (
     HistogramSeries,
     ScatterSeries,
 )
-from wrchart.core.themes import WayyTheme, DarkTheme, LightTheme
 
+# Transforms
 from wrchart.transforms.heikin_ashi import to_heikin_ashi
 from wrchart.transforms.renko import to_renko
 from wrchart.transforms.kagi import to_kagi
@@ -58,7 +98,51 @@ from wrchart.financial import (
     rolling_sharpe,
 )
 
+# Drawing tools
+from wrchart.drawing.tools import (
+    BaseDrawing,
+    HorizontalLine,
+    VerticalLine,
+    TrendLine,
+    Ray,
+    Rectangle,
+    Arrow,
+    Text,
+    PriceRange,
+    FibonacciRetracement,
+    FibonacciExtension,
+    export_drawings,
+    import_drawings,
+)
+
+
+# -------------------------------------------------------------------------
+# Deprecation Wrappers
+# -------------------------------------------------------------------------
+
+class WebGLChart(Chart):
+    """
+    Deprecated: Use Chart() which auto-selects the WebGL backend for large data.
+
+    This class is provided for backward compatibility and will be removed
+    in a future version.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "WebGLChart is deprecated. Use Chart() which auto-selects the optimal backend. "
+            "For explicit WebGL, use Chart(backend='webgl').",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        kwargs["backend"] = "webgl"
+        super().__init__(*args, **kwargs)
+
+
+# -------------------------------------------------------------------------
 # Live streaming (optional - requires websockets)
+# -------------------------------------------------------------------------
+
 try:
     from wrchart.live import (
         LiveChart,
@@ -74,22 +158,36 @@ except ImportError:
     LiveDashboard = None
     LiveServer = None
 
-__version__ = "0.1.4"
+
+__version__ = "0.2.0"
 
 __all__ = [
-    # Core
+    # Core - Unified API
     "Chart",
-    "WebGLChart",
-    # Series
+    # Quick-plot functions
+    "candlestick",
+    "line",
+    "area",
+    "forecast",
+    "dashboard",
+    # Schema
+    "DataSchema",
+    # Themes
+    "Theme",
+    "WayyTheme",
+    "DarkTheme",
+    "LightTheme",
+    "WAYY",
+    "DARK",
+    "LIGHT",
+    "get_theme",
+    "resolve_theme",
+    # Series (advanced)
     "CandlestickSeries",
     "LineSeries",
     "AreaSeries",
     "HistogramSeries",
     "ScatterSeries",
-    # Themes
-    "WayyTheme",
-    "DarkTheme",
-    "LightTheme",
     # Transforms
     "to_heikin_ashi",
     "to_renko",
@@ -116,6 +214,20 @@ __all__ = [
     "HeatmapPanel",
     "GaugePanel",
     "AreaPanel",
+    # Drawing tools
+    "BaseDrawing",
+    "HorizontalLine",
+    "VerticalLine",
+    "TrendLine",
+    "Ray",
+    "Rectangle",
+    "Arrow",
+    "Text",
+    "PriceRange",
+    "FibonacciRetracement",
+    "FibonacciExtension",
+    "export_drawings",
+    "import_drawings",
     # Live streaming
     "LiveChart",
     "LiveTable",
@@ -128,4 +240,6 @@ __all__ = [
     "equity_curve",
     "drawdown_chart",
     "rolling_sharpe",
+    # Deprecated (still exported for backward compatibility)
+    "WebGLChart",
 ]

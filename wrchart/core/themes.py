@@ -272,3 +272,55 @@ LightTheme = Theme(
         grid_style="solid",
     ),
 )
+
+
+# Theme shortcuts - lowercase string names
+WAYY = WayyTheme
+DARK = DarkTheme
+LIGHT = LightTheme
+
+# Theme registry for string lookup
+_THEMES = {
+    "wayy": WayyTheme,
+    "dark": DarkTheme,
+    "light": LightTheme,
+}
+
+
+def get_theme(name: str) -> Theme:
+    """
+    Get a theme by name.
+
+    Args:
+        name: Theme name ("wayy", "dark", "light")
+
+    Returns:
+        Theme instance
+
+    Raises:
+        ValueError: If theme name is unknown
+    """
+    name_lower = name.lower()
+    if name_lower not in _THEMES:
+        valid = ", ".join(_THEMES.keys())
+        raise ValueError(f"Unknown theme: {name}. Valid themes: {valid}")
+    return _THEMES[name_lower]
+
+
+def resolve_theme(theme) -> Theme:
+    """
+    Resolve a theme from string or Theme instance.
+
+    Args:
+        theme: Theme name (str) or Theme instance
+
+    Returns:
+        Theme instance
+    """
+    if theme is None:
+        return WayyTheme
+    if isinstance(theme, str):
+        return get_theme(theme)
+    if isinstance(theme, Theme):
+        return theme
+    raise ValueError(f"Invalid theme type: {type(theme)}. Expected str or Theme.")

@@ -2,28 +2,21 @@
 
 Interactive financial charting for Python with Polars support and TradingView-style aesthetics.
 
-**[View Live Demo](./examples/demo.html)** - See all chart types, indicators, GPU-accelerated million-point rendering, and high-frequency data visualization in action.
-
 ## Features
 
+- **Simple API** - Just pass your data, columns are auto-detected
 - **Polars-native** - Works directly with Polars DataFrames
+- **Auto backend selection** - Automatically picks optimal renderer based on data size
 - **Interactive** - TradingView-style pan, zoom, and crosshair
 - **Jupyter-ready** - Renders inline in notebooks
 - **Non-standard charts** - Renko, Kagi, Point & Figure, Heikin-Ashi, Line Break, Range Bars
 - **GPU-accelerated** - WebGL rendering for millions of points at 60fps
-- **Dynamic LOD** - Level of Detail automatically adjusts based on zoom
-- **High-frequency data** - LTTB decimation for tick data visualization
-- **Styled by default** - Clean Wayy Research aesthetic
+- **Drawing tools** - TrendLines, Fibonacci, Rectangles, and more
 
 ## Install
 
 ```bash
 pip install wrchart
-```
-
-For Jupyter support:
-```bash
-pip install wrchart[jupyter]
 ```
 
 ## Quick Start
@@ -32,54 +25,115 @@ pip install wrchart[jupyter]
 import wrchart as wrc
 import polars as pl
 
-# Create OHLCV data
-df = pl.DataFrame({
-    "time": [...],
-    "open": [...],
-    "high": [...],
-    "low": [...],
-    "close": [...],
-    "volume": [...],
-})
+# Just pass your data - columns are auto-detected
+df = pl.read_csv("prices.csv")
+wrc.Chart(df).show()
 
-# Create chart
-chart = wrc.Chart(width=800, height=600)
-chart.add_candlestick(df)
-chart.add_volume(df)
+# Or use quick-plot functions
+wrc.candlestick(df).show()
+wrc.line(df).show()
+```
+
+## The Unified Chart
+
+One `Chart` class that figures out the best rendering approach:
+
+```python
+# Small OHLC data → Interactive Lightweight Charts
+chart = wrc.Chart(daily_prices)
+
+# Large datasets (100k+) → GPU-accelerated WebGL (automatic)
+chart = wrc.Chart(tick_data_1M_rows)
+
+# Multiple DataFrames → Multi-panel dashboard
+chart = wrc.Chart([df1, df2, df3])
+```
+
+## Quick-Plot Functions
+
+One-liners for common chart types:
+
+```python
+wrc.candlestick(df).show()           # OHLC candlestick
+wrc.line(df).show()                  # Line chart
+wrc.area(df).show()                  # Area chart
+wrc.dashboard([df1, df2]).show()     # Multi-panel layout
+```
+
+## Column Auto-Detection
+
+No need to specify column names - common patterns are auto-detected:
+
+```python
+# These all work automatically:
+# time, timestamp, date, datetime, t
+# open, o, Open, OPEN
+# high, h, High, HIGH
+# low, l, Low, LOW
+# close, c, Close, price, value
+# volume, vol, v
+
+chart = wrc.Chart(df)  # Just works
+```
+
+Or specify explicitly when needed:
+
+```python
+chart.add_candlestick(df, time_col="ts", close_col="px")
+```
+
+## Themes
+
+```python
+# String shortcuts
+chart = wrc.Chart(df, theme="dark")
+chart = wrc.Chart(df, theme="light")
+chart = wrc.Chart(df, theme="wayy")  # default
+
+# Or use theme constants
+chart = wrc.Chart(df, theme=wrc.DARK)
+```
+
+## Drawing Tools
+
+```python
+from wrchart import TrendLine, HorizontalLine, FibonacciRetracement
+
+chart = wrc.Chart(df)
+chart.add_drawing(HorizontalLine(price=100, label="Support"))
+chart.add_drawing(TrendLine(
+    start_time=t1, start_price=90,
+    end_time=t2, end_price=110,
+))
+chart.add_drawing(FibonacciRetracement(
+    start_time=t1, start_price=100,
+    end_time=t2, end_price=150,
+))
 chart.show()
 ```
 
-## Chart Types
+Available drawing tools:
+- `HorizontalLine`, `VerticalLine`
+- `TrendLine`, `Ray`
+- `Rectangle`
+- `Arrow`, `Text`
+- `PriceRange`
+- `FibonacciRetracement`, `FibonacciExtension`
 
-### Standard Charts
-
-```python
-# Candlestick
-chart = wrc.Chart()
-chart.add_candlestick(df)
-
-# Line
-chart.add_line(df, value_col="close")
-
-# Area
-chart.add_area(df, value_col="close")
-```
-
-### Non-Standard Charts
+## Non-Standard Charts
 
 ```python
 # Heikin-Ashi (smoothed candles)
 ha_data = wrc.to_heikin_ashi(df)
-chart.add_candlestick(ha_data)
+wrc.candlestick(ha_data).show()
 
 # Renko (price-based bricks)
 renko_data = wrc.to_renko(df, brick_size=5.0)
-chart.add_candlestick(renko_data)
 
 # Kagi (reversal lines)
 kagi_data = wrc.to_kagi(df, reversal_amount=2.0)
 
-# Point & Figure (X's and O's)
+# Point & Figure
 pnf_data = wrc.to_point_and_figure(df, box_size=1.0)
 
 # Three Line Break
@@ -89,54 +143,44 @@ lb_data = wrc.to_line_break(df, num_lines=3)
 rb_data = wrc.to_range_bars(df, range_size=2.0)
 ```
 
-### High-Frequency Data
+## High-Frequency Data
+
+For datasets over 100k points, the WebGL backend is automatically selected:
 
 ```python
-# Downsample 1M ticks to 2000 points
-display_data = wrc.lttb_downsample(tick_data, target_points=2000)
-chart.add_line(display_data, value_col="price")
-```
-
-### GPU-Accelerated Million Point Rendering
-
-For tick-by-tick data with millions of points, use `WebGLChart` for GPU-accelerated rendering:
-
-```python
-import wrchart as wrc
-import polars as pl
-
-# Create 1 million tick data points
-df = pl.DataFrame({
+# 1 million points - automatically uses WebGL
+tick_data = pl.DataFrame({
     "time": range(1_000_000),
-    "price": [...],  # Your tick prices
+    "price": prices,
 })
-
-# WebGL chart with automatic LOD
-chart = wrc.WebGLChart(width=800, height=400, title="Tick Data")
-chart.add_line(df, time_col="time", value_col="price")
-chart.show()
-
-# Or save to HTML file
-chart.to_html("tick_chart.html")
+wrc.Chart(tick_data).show()  # 60fps rendering
 ```
 
-Features:
-- **60fps rendering** of millions of points via WebGL
-- **Dynamic LOD**: Automatically switches between 7 detail levels (2K to 1M points)
-- **Virtual viewport**: Only renders visible data for maximum performance
-- **Smooth interaction**: Pan with drag, zoom with scroll wheel
-
-## Themes
+Or use LTTB downsampling for Lightweight Charts:
 
 ```python
-# Wayy theme (default) - black/white/red
-chart = wrc.Chart(theme=wrc.WayyTheme)
+display_data = wrc.lttb_downsample(tick_data, target_points=2000)
+wrc.line(display_data).show()
+```
 
-# Dark theme
-chart = wrc.Chart(theme=wrc.DarkTheme)
+## Building Charts Incrementally
 
-# Light theme
-chart = wrc.Chart(theme=wrc.LightTheme)
+```python
+chart = wrc.Chart(title="Price Analysis", theme="dark")
+chart.add_candlestick(df)
+chart.add_volume(df)
+chart.add_horizontal_line(100, label="Support", color="#ff0000")
+chart.add_marker(time=t, position="aboveBar", shape="arrowDown", text="Signal")
+chart.show()
+```
+
+## Output Options
+
+```python
+chart.show()              # Display in Jupyter or open browser
+chart.streamlit()         # Render in Streamlit app
+html = chart.to_html()    # Get HTML string
+json = chart.to_json()    # Get JSON config
 ```
 
 ## API Reference
@@ -145,88 +189,55 @@ chart = wrc.Chart(theme=wrc.LightTheme)
 
 ```python
 wrc.Chart(
-    width=800,          # Chart width in pixels
-    height=600,         # Chart height in pixels
-    theme=WayyTheme,    # Color theme
-    title=None,         # Optional chart title
+    data=None,              # DataFrame, list of DataFrames, or None
+    width=800,
+    height=600,
+    theme="wayy",           # "wayy", "dark", "light" or Theme instance
+    title=None,
+    backend="auto",         # "auto", "lightweight", "webgl", "canvas", "multipanel"
 )
 
-# Methods
-chart.add_candlestick(df, time_col="time", open_col="open", ...)
-chart.add_line(df, time_col="time", value_col="value", ...)
-chart.add_area(df, time_col="time", value_col="value", ...)
-chart.add_histogram(df, time_col="time", value_col="value", ...)
-chart.add_volume(df, time_col="time", volume_col="volume", ...)
-chart.add_marker(time, position="aboveBar", shape="circle", ...)
+# Series methods (columns auto-detected)
+chart.add_candlestick(df)
+chart.add_line(df)
+chart.add_area(df)
+chart.add_histogram(df)
+chart.add_volume(df)
+
+# Annotations
+chart.add_marker(time, position, shape, color, text)
+chart.add_horizontal_line(price, color, label)
+chart.add_drawing(drawing)
+
+# Output
 chart.show()
+chart.streamlit()
+chart.to_html()
+chart.to_json()
 ```
 
-### WebGLChart (GPU-Accelerated)
+### Quick-Plot Functions
 
 ```python
-wrc.WebGLChart(
-    width=800,          # Chart width in pixels
-    height=400,         # Chart height in pixels
-    theme=WayyTheme,    # Color theme
-    title=None,         # Optional chart title
-)
-
-# Methods
-chart.add_line(df, time_col="time", value_col="value")  # Add line data
-chart.show()                                             # Display in notebook/browser
-chart.to_html("chart.html")                             # Save to HTML file
+wrc.candlestick(df, width=800, height=600, theme=None, title=None)
+wrc.line(df, ...)
+wrc.area(df, ...)
+wrc.dashboard(dataframes, rows=None, cols=None, ...)
+wrc.forecast(paths, historical, ...)
 ```
 
 ### Transforms
 
 ```python
-# Heikin-Ashi
-wrc.to_heikin_ashi(df, time_col="time", open_col="open", ...)
-
-# Renko
-wrc.to_renko(df, brick_size=5.0, use_atr=False, ...)
-
-# Kagi
-wrc.to_kagi(df, reversal_amount=2.0, use_percentage=False, ...)
-
-# Point & Figure
-wrc.to_point_and_figure(df, box_size=1.0, reversal_boxes=3, ...)
-
-# Line Break
-wrc.to_line_break(df, num_lines=3, ...)
-
-# Range Bars
-wrc.to_range_bars(df, range_size=2.0, ...)
-
-# LTTB Decimation
-wrc.lttb_downsample(df, time_col="time", value_col="value", target_points=1000)
-```
-
-## Integration with wrtrade
-
-```python
-import wrtrade as wrt
-import wrchart as wrc
-
-# Backtest
-portfolio = wrt.Portfolio(prices, signals)
-results = portfolio.calculate_performance()
-
-# Visualize
-chart = wrc.Chart(title="Portfolio Performance")
-chart.add_line(
-    results['cumulative_returns'].to_frame(),
-    value_col="cumulative_returns"
-)
-chart.show()
+wrc.to_heikin_ashi(df)
+wrc.to_renko(df, brick_size)
+wrc.to_kagi(df, reversal_amount)
+wrc.to_point_and_figure(df, box_size)
+wrc.to_line_break(df, num_lines)
+wrc.to_range_bars(df, range_size)
+wrc.lttb_downsample(df, target_points)
 ```
 
 ## License
 
 MIT License - see LICENSE file for details.
-
-## Links
-
-- [GitHub](https://github.com/wayy-research/wrchart)
-- [Documentation](https://wrchart.readthedocs.io/)
-- [Wayy Research](https://wayyresearch.com)
